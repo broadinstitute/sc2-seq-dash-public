@@ -189,6 +189,26 @@ def table_vocs(states, collabs, purpose):
     return table.to_dict('records')
 
 @app.callback(
+    dash.dependencies.Output('table_seq_by_week', 'data'),
+    dash.dependencies.Input('state_selector', 'value'),
+    dash.dependencies.Input('collab_selector', 'value'),
+    dash.dependencies.Input('purpose_selector', 'value'),
+    )
+def table_numbers_by_week(states, collabs, purpose):
+    # Report on major VoCs
+    df = get_subset(states, collabs, purpose)
+    table = df.groupby(
+        ["run_epiweek", "genome_status"], as_index=False, dropna=False
+        ).agg(n=('assembly_fasta', 'count')
+        ).pivot(index='run_epiweek', columns='genome_status', values='n'
+        ).reset_index().rename(columns={'index':'run_epiweek'})
+    table.loc[:,'run_epiweek_end'] = list(x.enddate().strftime('%Y-%m-%d') if not pd.isna(x) else '' for x in table.loc[:,'run_epiweek'])
+    table['n_submittable'] = table['submittable']
+    table['n_good'] = table['submittable'] + table['failed_annotation']
+    table['n_attempted'] = table['submittable'] + table['failed_annotation'] + table['failed_sequencing']
+    return table.to_dict('records')
+
+@app.callback(
     dash.dependencies.Output('table_vocs_by_sample', 'data'),
     dash.dependencies.Input('state_selector', 'value'),
     dash.dependencies.Input('collab_selector', 'value'),
@@ -408,6 +428,25 @@ app.layout = html.Div(children=[
         html.Br(),
 
         dbc.Card(dbc.CardBody([
+            html.P(children='Sequencing activity by CDC epiweek of sequencing run date.'),
+            html.Div(children=dash_table.DataTable(
+                id='table_seq_by_week',
+                columns=[
+                    {'name':'sequencing epiweek', 'id':'run_epiweek'},
+                    {'name':'sequencing epiweek end', 'id':'run_epiweek_end'},
+                    {'name':'samples attempted', 'id':'n_attempted'},
+                    {'name':'genomes assembled', 'id':'n_good'},
+                    {'name':'genomes submittable', 'id':'n_submittable'},
+                ],
+                sort_action='native',
+                export_format='xlsx',
+                export_headers='names',
+            ))
+        ])),
+
+        html.Br(),
+
+        dbc.Card(dbc.CardBody([
             html.P(children='Reportable VoC counts by CDC epiweek of sample collection.'),
             html.Div(children=dash_table.DataTable(
                 id='table_vocs',
@@ -452,6 +491,7 @@ app.layout = html.Div(children=[
                     {'name':'bioproject_accession', 'id':'bioproject_accession'},
                 ],
                 sort_action='native',
+                filter_action='native',
                 page_action='native',
                 page_size=20,
                 export_format='xlsx',
