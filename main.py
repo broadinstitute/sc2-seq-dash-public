@@ -17,7 +17,7 @@ import dash.dependencies
 
 # -------------------------- PARAMETERS ---------------------------- #
 
-reportable_vocs = ('B.1.1.7', 'B.1.351', 'P.1')
+reportable_vocs = ('B.1.1.7', 'B.1.351', 'P.1', 'B.1.427', 'B.1.429')
 min_unambig = 24000
 
 
