@@ -17,7 +17,7 @@ import dash.dependencies
 
 # -------------------------- PARAMETERS ---------------------------- #
 
-reportable_vocs = ('B.1.1.7', 'B.1.351', 'P.1', 'B.1.427', 'B.1.429')
+reportable_vocs = ('B.1.1.7', 'B.1.351', 'B.1.351.1', 'B.1.351.2', 'P.1', 'B.1.427', 'B.1.429')
 min_unambig = 24000
 
 
@@ -486,6 +486,8 @@ app.layout = html.Div(children=[
                     {'name':'assembly_length_unambiguous', 'id':'assembly_length_unambiguous'},
                     {'name':'amplicon_set', 'id':'amplicon_set'},
                     {'name':'vadr_num_alerts', 'id':'vadr_num_alerts'},
+                    {'name':'nextclade_aa_subs', 'id':'nextclade_aa_subs'},
+                    {'name':'nextclade_aa_dels', 'id':'nextclade_aa_dels'},
                     {'name':'collected_by', 'id':'collected_by'},
                     {'name':'purpose_of_sequencing', 'id':'purpose_of_sequencing'},
                     {'name':'bioproject_accession', 'id':'bioproject_accession'},
