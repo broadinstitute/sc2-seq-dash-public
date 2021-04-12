@@ -37,6 +37,8 @@ else:
 # -------------------------- TRANSFORM DATA ---------------------------- #
 
 # format dates properly
+df_assemblies['collection_date'] = df_assemblies['collection_date'].replace(['missing',''], pd.NA)
+df_assemblies['run_date'] = df_assemblies['run_date'].replace(['missing',''], pd.NA)
 df_assemblies = df_assemblies.astype({'collection_date':np.datetime64,'run_date':np.datetime64})
 
 # fix missing data in purpose_of_sequencing
