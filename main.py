@@ -156,7 +156,7 @@ def table_vocs(states, collabs, purpose):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    df_vocs = df_good[~df_good['voc_name'].isna()]
+    df_vocs = df_good[df_good['voc_name'].notnull()]
     table = df_vocs.groupby(
         ["collection_epiweek_end", "voc_name"], as_index=False, dropna=False
         ).agg(n=('assembly_fasta', 'count')
@@ -196,7 +196,7 @@ def table_vocs_by_sample(states, collabs, purpose, sample_set):
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     if sample_set == 'vocs':
-        df_vocs = df_good[~df_good['voc_name'].isna())]
+        df_vocs = df_good[df_good['voc_name'].notnull())]
         return df_vocs.to_dict('records')
     else:
         return df_good.to_dict('records')
@@ -211,7 +211,7 @@ def table_vocs_by_sample(states, collabs, purpose, sample_set):
 def basic_stats_card(states, collabs, purpose):
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    df_vocs = df_good[~df_good['voc_name'].isna()]
+    df_vocs = df_good[df_good['voc_name'].notnull()]
 
     return [
         html.P("Samples sequenced: {}".format(
