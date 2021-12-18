@@ -23,7 +23,8 @@ min_unambig = 24000
 assemblies_tsv = 'https://storage.googleapis.com/cdc-covid-surveillance-broad-dashboard/metadata-cumulative.txt'
 
 with urllib.request.urlopen(assemblies_tsv) as inf:
-    df_assemblies = pd.read_csv(inf, sep='\t', encoding='utf-8')
+    df_assemblies = pd.read_csv(inf, sep='\t', encoding='utf-8',
+        dtype={'zip':str, 'geo_state':str})
 
 
 # -------------------------- TRANSFORM DATA ---------------------------- #
@@ -41,7 +42,7 @@ df_assemblies.loc[:,'purpose_of_sequencing'] = df_assemblies.loc[:,'purpose_of_s
 
 # derived column: voc_name
 df_assemblies.loc[:,'voc_name'] = list(clade.split('(')[1][:-1].split(',')[0] if (not pd.isna(clade) and '(' in clade) else pd.NA for clade in df_assemblies.loc[:,'nextclade_clade'])
-reportable_vocs = list(x for x in df_assemblies['voc_name'].unique() if x)
+reportable_vocs = list(x for x in df_assemblies['voc_name'].unique() if not pd.isna(x))
 
 # get lists
 states_all = list(x for x in df_assemblies['geo_state'].unique() if x)
