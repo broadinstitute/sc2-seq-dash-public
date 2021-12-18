@@ -196,7 +196,7 @@ def table_vocs_by_sample(states, collabs, purpose, sample_set):
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     if sample_set == 'vocs':
-        df_vocs = df_good[df_good['voc_name'].notnull())]
+        df_vocs = df_good[df_good['voc_name'].notnull()]
         return df_vocs.to_dict('records')
     else:
         return df_good.to_dict('records')
