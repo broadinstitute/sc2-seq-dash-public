@@ -121,7 +121,7 @@ def fig_sample_age(states, collabs, purpose):
 def fig_root_to_tip(states, collabs, purpose, colorby):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     return px.scatter(df_good,
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
@@ -138,7 +138,7 @@ def fig_root_to_tip(states, collabs, purpose, colorby):
 def fig_nextclade_over_time(states, collabs, purpose):
     ''' Nextclade histograms over time '''
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     return px.histogram(df_good,
         title='Nextclade phylogenetic classifications vs sample collection date',
         x='collection_epiweek_end',
@@ -155,7 +155,7 @@ def fig_nextclade_over_time(states, collabs, purpose):
 def table_vocs(states, collabs, purpose):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     df_vocs = df_good[~df_good['voc_name'].isna()]
     table = df_vocs.groupby(
         ["collection_epiweek_end", "voc_name"], as_index=False, dropna=False
@@ -194,9 +194,9 @@ def table_numbers_by_week(states, collabs, purpose):
 def table_vocs_by_sample(states, collabs, purpose, sample_set):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     if sample_set == 'vocs':
-        df_vocs = df_good[df_good['pango_lineage'].isin(reportable_vocs)]
+        df_vocs = df_good[~df_good['voc_name'].isna())]
         return df_vocs.to_dict('records')
     else:
         return df_good.to_dict('records')
@@ -210,7 +210,7 @@ def table_vocs_by_sample(states, collabs, purpose, sample_set):
     )
 def basic_stats_card(states, collabs, purpose):
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
     df_vocs = df_good[~df_good['voc_name'].isna()]
 
     return [
@@ -219,12 +219,6 @@ def basic_stats_card(states, collabs, purpose):
             className='card-text'),
         html.P("Genomes assembled: {}".format(
             len(df_good.index)),
-            className='card-text'),
-        html.P("Genomes released or in process for data release: {}".format(
-            len(df_good.query('genome_status == "submittable"'))),
-            className='card-text'),
-        html.P("Samples with Variants of Concern (VoCs): {} ({})".format(
-            len(df_vocs.index), ', '.join(df_vocs['pango_lineage'].unique())),
             className='card-text'),
         html.P("Samples sequenced between {} and {}.".format(
             df['run_date'].min().strftime('%Y-%m-%d'), df['run_date'].max().strftime('%Y-%m-%d')),
@@ -396,29 +390,27 @@ app.layout = html.Div(children=[
         dbc.Card(dbc.CardBody([
             dcc.Graph(id="fig_nextclade_over_time"),
             html.P('''This shows the breakdown of major phylogenetic clades over time, using the Nextclade
-            naming system. Variants of Concern (VoCs) are highlighted as specially named Nextclade clades.
-            Nextclade clade 20I/501Y.V1 corresponds to PANGO lineage B.1.1.7, 20H/501Y.V2 corresponds to B.1.351,
-            and 20J/501Y.V3 corresponds to P.1.'''),
+            naming system. Variants of Concern (VoCs) are highlighted as specially named Nextclade clades.'''),
         ])),
 
-        html.Br(),
+        #html.Br(),
 
-        dbc.Card(dbc.CardBody([
-            html.P(children='Sequencing activity by CDC epiweek of sequencing run date.'),
-            html.Div(children=dash_table.DataTable(
-                id='table_seq_by_week',
-                columns=[
-                    {'name':'sequencing epiweek', 'id':'run_epiweek'},
-                    {'name':'sequencing epiweek end', 'id':'run_epiweek_end'},
-                    {'name':'samples attempted', 'id':'n_attempted'},
-                    {'name':'genomes assembled', 'id':'n_good'},
-                    {'name':'genomes submittable', 'id':'n_submittable'},
-                ],
-                sort_action='native',
-                export_format='xlsx',
-                export_headers='names',
-            ))
-        ])),
+        #dbc.Card(dbc.CardBody([
+        #    html.P(children='Sequencing activity by CDC epiweek of sequencing run date.'),
+        #    html.Div(children=dash_table.DataTable(
+        #        id='table_seq_by_week',
+        #        columns=[
+        #            {'name':'sequencing epiweek', 'id':'run_epiweek'},
+        #            {'name':'sequencing epiweek end', 'id':'run_epiweek_end'},
+        #            {'name':'samples attempted', 'id':'n_attempted'},
+        #            {'name':'genomes assembled', 'id':'n_good'},
+        #            {'name':'genomes submittable', 'id':'n_submittable'},
+        #        ],
+        #        sort_action='native',
+        #        export_format='xlsx',
+        #        export_headers='names',
+        #    ))
+        #])),
 
         html.Br(),
 
