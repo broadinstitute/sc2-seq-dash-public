@@ -43,6 +43,7 @@ df_assemblies.loc[:,'purpose_of_sequencing'] = df_assemblies.loc[:,'purpose_of_s
 # derived column: voc_name
 df_assemblies.loc[:,'voc_name'] = list(clade.split('(')[1][:-1].split(',')[0] if (not pd.isna(clade) and '(' in clade) else pd.NA for clade in df_assemblies.loc[:,'nextclade_clade'])
 reportable_vocs = list(x for x in df_assemblies['voc_name'].unique() if not pd.isna(x))
+df_assemblies['variant_name'] = df_assemblies['voc_name'].fillna('other')
 
 # get lists
 states_all = list(x for x in df_assemblies['geo_state'].unique() if x)
@@ -121,10 +122,10 @@ def fig_root_to_tip(states, collabs, purpose):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.scatter(df_good[df_good.voc_name.notnull()],
+    return px.scatter(df_good,
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
-        color='voc_name', opacity=0.7,
+        color='variant_name', opacity=0.7,
         hover_data=['sample', 'biosample_accession', 'collected_by', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
         )
 
