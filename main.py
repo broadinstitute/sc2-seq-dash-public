@@ -139,10 +139,10 @@ def fig_nextclade_over_time(states, collabs, purpose):
     ''' Nextclade histograms over time '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.histogram(df_good[df_good.nextclade_clade.notnull()],
-        title='Nextclade phylogenetic classifications vs sample collection date',
+    return px.histogram(df_good,
+        title='Variant classifications by sample collection week',
         x='collection_epiweek_end',
-        color='nextclade_clade',
+        color='variant_name',
         color_discrete_sequence=px.colors.qualitative.Vivid
         )
 
