@@ -108,7 +108,7 @@ def fig_sample_age(states, collabs, purpose):
         x='collection_date', y='run_date', opacity=0.5,
         color='sample_age_at_runtime',
         color_continuous_scale=px.colors.sequential.Plasma,
-        hover_data=['sample', 'collected_by', 'collaborator_id', 'biosample_accession', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
+        hover_data=['sample', 'collected_by', 'biosample_accession', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
         )
 
 @app.callback(
@@ -126,7 +126,7 @@ def fig_root_to_tip(states, collabs, purpose, colorby):
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
         color=colorby, opacity=0.7,
-        hover_data=['sample', 'collaborator_id', 'biosample_accession', 'collected_by', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
+        hover_data=['sample', 'biosample_accession', 'collected_by', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
         )
 
 @app.callback(
@@ -139,7 +139,7 @@ def fig_nextclade_over_time(states, collabs, purpose):
     ''' Nextclade histograms over time '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.histogram(df_good,
+    return px.histogram(df_good[df_good.nextclade_clade.notnull()],
         title='Nextclade phylogenetic classifications vs sample collection date',
         x='collection_epiweek_end',
         color='nextclade_clade',
@@ -159,7 +159,7 @@ def table_vocs(states, collabs, purpose):
     df_vocs = df_good[df_good['voc_name'].notnull()]
     table = df_vocs.groupby(
         ["collection_epiweek_end", "voc_name"], as_index=False, dropna=False
-        ).agg(n=('assembly_fasta', 'count')
+        ).agg(n=('sample', 'count')
         ).pivot(index='collection_epiweek_end', columns='voc_name', values='n'
         ).reset_index().rename(columns={'index':'collection_epiweek_end'})
     return table.to_dict('records')
@@ -175,7 +175,7 @@ def table_numbers_by_week(states, collabs, purpose):
     df = get_subset(states, collabs, purpose)
     table = df.groupby(
         ["run_epiweek", "genome_status"], as_index=False, dropna=False
-        ).agg(n=('assembly_fasta', 'count')
+        ).agg(n=('sample', 'count')
         ).pivot(index='run_epiweek', columns='genome_status', values='n'
         ).reset_index().rename(columns={'index':'run_epiweek'})
     table.loc[:,'run_epiweek_end'] = list(x.enddate().strftime('%Y-%m-%d') if not pd.isna(x) else '' for x in table.loc[:,'run_epiweek'])
@@ -337,9 +337,11 @@ app.layout = html.Div(children=[
             plotted by the date of the sequencing run in our lab (by CDC epiweek).'''),
             html.P('''"Submittable" genomes pass all QC checks and are quickly released to public genome repositories.
             "Failed sequencing" are samples that failed to produce at least {} unambiguous base pairs of
-            viral genome. Raw data from these samples are submitted to NCBI's SRA database, but the genomes
+            viral genome; raw data from these samples are submitted to NCBI's SRA database, but the genomes
             are not used for any analyses. "Failed annotation" are samples that produced a sufficiently complete
-            genome, but did not pass NCBI's VADR quality checks.'''.format(min_unambig))
+            genome, but did not pass NCBI's VADR quality checks; these data are reported to state public health and
+            the CDC but not public repositories. "Failed NTC" are samples in a laboratory prep batch where cross
+            contamination was detected in control libraries; these data are rejected and samples reprepped.'''.format(min_unambig))
         ])),
 
         html.Br(),
@@ -444,7 +446,6 @@ app.layout = html.Div(children=[
         #        id='table_vocs_by_sample',
         #        columns=[
         #            {'name':'sample', 'id':'sample'},
-        #            {'name':'collaborator_id', 'id':'collaborator_id'},
         #            {'name':'biosample_accession', 'id':'biosample_accession'},
         #            {'name':'pango_lineage', 'id':'pango_lineage'},
         #            {'name':'nextclade_clade', 'id':'nextclade_clade'},
