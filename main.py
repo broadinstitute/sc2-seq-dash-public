@@ -122,7 +122,7 @@ def fig_root_to_tip(states, collabs, purpose, colorby):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.scatter(df_good[df_good.collection_date.notnull()],
+    return px.scatter(df_good[df_good.collection_date.notnull() & df_good.dist_to_ref_snps.notnull()],
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
         color=colorby, opacity=0.7,
