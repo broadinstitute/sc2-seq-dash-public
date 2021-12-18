@@ -121,7 +121,7 @@ def fig_sample_age(states, collabs, purpose):
 def fig_root_to_tip(states, collabs, purpose, colorby):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing"')
+    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
     return px.scatter(df_good,
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
@@ -138,7 +138,7 @@ def fig_root_to_tip(states, collabs, purpose, colorby):
 def fig_nextclade_over_time(states, collabs, purpose):
     ''' Nextclade histograms over time '''
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing"')
+    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
     return px.histogram(df_good,
         title='Nextclade phylogenetic classifications vs sample collection date',
         x='collection_epiweek_end',
@@ -155,7 +155,7 @@ def fig_nextclade_over_time(states, collabs, purpose):
 def table_vocs(states, collabs, purpose):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing"')
+    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
     df_vocs = df_good[~df_good['voc_name'].isna()]
     table = df_vocs.groupby(
         ["collection_epiweek_end", "voc_name"], as_index=False, dropna=False
@@ -194,7 +194,7 @@ def table_numbers_by_week(states, collabs, purpose):
 def table_vocs_by_sample(states, collabs, purpose, sample_set):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing"')
+    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
     if sample_set == 'vocs':
         df_vocs = df_good[df_good['pango_lineage'].isin(reportable_vocs)]
         return df_vocs.to_dict('records')
@@ -210,8 +210,8 @@ def table_vocs_by_sample(states, collabs, purpose, sample_set):
     )
 def basic_stats_card(states, collabs, purpose):
     df = get_subset(states, collabs, purpose)
-    df_good = df.query('genome_status != "failed_sequencing"')
-    df_vocs = df_good[df_good['pango_lineage'].isin(reportable_vocs)]
+    df_good = df.query('genome_status != "failed_sequencing" && genome_status != "failed_NTC"')
+    df_vocs = df_good[~df_good['voc_name'].isna()]
 
     return [
         html.P("Samples sequenced: {}".format(
