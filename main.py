@@ -35,7 +35,7 @@ df_assemblies['run_date'] = df_assemblies['run_date'].replace(['missing',''], pd
 df_assemblies = df_assemblies.astype({'collection_date':np.datetime64,'run_date':np.datetime64})
 
 # remove a couple bad data points
-df_assemblies = df_assemblies[df_assemblies.collection_date > np.datetime64('2020-01-01')]
+df_assemblies = df_assemblies[df_assemblies.collection_date > np.datetime64('2021-01-01')]
 
 # fix missing data in purpose_of_sequencing
 df_assemblies.loc[:,'purpose_of_sequencing'] = df_assemblies.loc[:,'purpose_of_sequencing'].fillna('Missing').replace('', 'Missing')
@@ -122,7 +122,7 @@ def fig_root_to_tip(states, collabs, purpose, colorby):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.scatter(df_good,
+    return px.scatter(df_good[df_good.collection_date.notnull()],
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
         color=colorby, opacity=0.7,
