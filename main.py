@@ -105,10 +105,8 @@ def fig_sample_age(states, collabs, purpose):
     ''' plot collection-vs-sequencing dates '''
     df = get_subset(states, collabs, purpose)
     return px.scatter(df,
-        title='Sequencing date vs collection date',
-        x='collection_date', y='run_date', opacity=0.5,
-        color='sample_age_at_runtime',
-        color_continuous_scale=px.colors.sequential.Plasma,
+        title='Sequencing timeliness vs collection date',
+        x='collection_date', y='sample_age_at_runtime', opacity=0.5,
         hover_data=['sample', 'collected_by', 'biosample_accession', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
         )
 
