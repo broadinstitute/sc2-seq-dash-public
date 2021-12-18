@@ -1,7 +1,5 @@
-import os
-import itertools
+import urllib.request
 
-import epiweeks
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -17,21 +15,15 @@ import dash.dependencies
 
 # -------------------------- PARAMETERS ---------------------------- #
 
-reportable_vocs = ('B.1.1.7', 'B.1.351', 'B.1.351.1', 'B.1.351.2', 'P.1', 'B.1.427', 'B.1.429')
 min_unambig = 24000
 
 
 # -------------------------- LOAD DATA ---------------------------- #
 
-assemblies_tsv = os.path.join('data/assemblies.tsv')
-collab_tsv = os.path.join('data/collab_ids.tsv')
+assemblies_tsv = 'https://storage.googleapis.com/cdc-covid-surveillance-broad-dashboard/metadata-cumulative.txt'
 
-df_assemblies = pd.read_csv(assemblies_tsv, sep='\t')
-if collab_tsv and os.path.isfile(collab_tsv):
-    collab_ids = pd.read_csv(collab_tsv, sep='\t')[list(['external_id', 'collaborator_id'])]
-    collab_ids.columns = ['sample', 'collaborator_id']
-else:
-    collab_ids = pd.DataFrame(columns = ['sample', 'collaborator_id']) 
+with urllib.request.urlopen(assemblies_tsv) as inf:
+    df_assemblies = pd.read_csv(inf, sep='\t', encoding='utf-8')
 
 
 # -------------------------- TRANSFORM DATA ---------------------------- #
@@ -41,34 +33,15 @@ df_assemblies['collection_date'] = df_assemblies['collection_date'].replace(['mi
 df_assemblies['run_date'] = df_assemblies['run_date'].replace(['missing',''], pd.NA)
 df_assemblies = df_assemblies.astype({'collection_date':np.datetime64,'run_date':np.datetime64})
 
+# remove a couple bad data points
+df_assemblies = df_assemblies[df_assemblies.collection_date > np.datetime64('2020-01-01')]
+
 # fix missing data in purpose_of_sequencing
 df_assemblies.loc[:,'purpose_of_sequencing'] = df_assemblies.loc[:,'purpose_of_sequencing'].fillna('Missing').replace('', 'Missing')
 
-# derived columns: collection_epiweek, run_epiweek
-df_assemblies.loc[:,'collection_epiweek'] = list(epiweeks.Week.fromdate(x) if not pd.isna(x) else x for x in df_assemblies.loc[:,'collection_date'])
-df_assemblies.loc[:,'run_epiweek'] = list(epiweeks.Week.fromdate(x) if not pd.isna(x) else x for x in df_assemblies.loc[:,'run_date'])
-df_assemblies.loc[:,'collection_epiweek_end'] = list(x.enddate().strftime('%Y-%m-%d') if not pd.isna(x) else '' for x in df_assemblies.loc[:,'collection_epiweek'])
-df_assemblies.loc[:,'run_epiweek_end'] = list(x.enddate().strftime('%Y-%m-%d') if not pd.isna(x) else '' for x in df_assemblies.loc[:,'run_epiweek'])
-df_assemblies.loc[:,('collection_date', 'collection_epiweek', 'collection_epiweek_end', 'run_date', 'run_epiweek', 'run_epiweek_end')]
-
-# derived column: sample_age_at_runtime
-df_assemblies.loc[:,'sample_age_at_runtime'] = list(x.days for x in df_assemblies.loc[:,'run_date'] - df_assemblies.loc[:,'collection_date'])
-
-# derived column: genome_status
-df_assemblies.loc[:,'genome_status'] = list(
-        'failed_sequencing' if df_assemblies.loc[id, 'assembly_length_unambiguous'] < min_unambig
-        else 'failed_annotation' if df_assemblies.loc[id, 'vadr_num_alerts'] > 0
-        else 'submittable'
-        for id in df_assemblies.index)
-
-# derived columns: geo_country, geo_state, geo_locality
-df_assemblies.loc[:,'geo_country'] = list(g.split(': ')[0] if not pd.isna(g) else '' for g in df_assemblies.loc[:,'geo_loc_name'])
-df_assemblies.loc[:,'geo_state'] = list(g.split(': ')[1].split(', ')[0] if not pd.isna(g) else '' for g in df_assemblies.loc[:,'geo_loc_name'])
-df_assemblies.loc[:,'geo_locality'] = list(g.split(': ')[1].split(', ')[1] if not pd.isna(g) and ', ' in g else '' for g in df_assemblies.loc[:,'geo_loc_name'])
-
-# join column: collaborator_id
-df_assemblies = df_assemblies.merge(collab_ids, on='sample', how='left', validate='one_to_one')
-
+# derived column: voc_name
+df_assemblies.loc[:,'voc_name'] = list(clade.split('(')[1][:-1].split(',')[0] if (not pd.isna(clade) and '(' in clade) else pd.NA for clade in df_assemblies.loc[:,'nextclade_clade'])
+reportable_vocs = list(x for x in df_assemblies['voc_name'].unique() if x)
 
 # get lists
 states_all = list(x for x in df_assemblies['geo_state'].unique() if x)
@@ -182,11 +155,11 @@ def table_vocs(states, collabs, purpose):
     # Report on major VoCs
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing"')
-    df_vocs = df_good[df_good['pango_lineage'].isin(reportable_vocs)]
+    df_vocs = df_good[~df_good['voc_name'].isna()]
     table = df_vocs.groupby(
-        ["collection_epiweek_end", "pango_lineage"], as_index=False, dropna=False
+        ["collection_epiweek_end", "voc_name"], as_index=False, dropna=False
         ).agg(n=('assembly_fasta', 'count')
-        ).pivot(index='collection_epiweek_end', columns='pango_lineage', values='n'
+        ).pivot(index='collection_epiweek_end', columns='voc_name', values='n'
         ).reset_index().rename(columns={'index':'collection_epiweek_end'})
     return table.to_dict('records')
 
@@ -403,7 +376,7 @@ app.layout = html.Div(children=[
                             {'label':'purpose of sequencing', 'value': 'purpose_of_sequencing'},
                             {'label':'nextclade clade', 'value': 'nextclade_clade'},
                         ],
-                        value='flowcell_id'
+                        value='nextclade_clade'
                     ),
                 ], width=3, align="center"),
             ]),
@@ -412,7 +385,7 @@ app.layout = html.Div(children=[
                     html.P('''A "root-to-tip plot" plots the genetic distance of each sample from Wuhan Hu-1
                     against the date it was collected. It is generally somewhat linear. Outliers on this plot
                     may be indicative of laboratory or metadata errors, or of evolutionarily unusual lineages
-                    (such as B.1.1.7).'''),
+                    (such as Alpha, Delta, and Omicron).'''),
                 ], width=12, align="center"),
             ]),
         ])),
@@ -460,49 +433,49 @@ app.layout = html.Div(children=[
             ))
         ])),
 
-        html.Br(),
+        #html.Br(),
 
-        dbc.Card(dbc.CardBody([
-            html.P(children='Details for each sample.'),
-            html.Div([
-                dcc.RadioItems(
-                    id='selector_sample_details',
-                    options=[
-                        {'label':'VoCs only', 'value': 'vocs'},
-                        {'label':'all samples', 'value': 'all'},
-                    ],
-                    value='vocs'
-                ),
-            ]),
-            html.Div(children=dash_table.DataTable(
-                id='table_vocs_by_sample',
-                columns=[
-                    {'name':'sample', 'id':'sample'},
-                    {'name':'collaborator_id', 'id':'collaborator_id'},
-                    {'name':'biosample_accession', 'id':'biosample_accession'},
-                    {'name':'pango_lineage', 'id':'pango_lineage'},
-                    {'name':'nextclade_clade', 'id':'nextclade_clade'},
-                    {'name':'collection_date', 'id':'collection_date'},
-                    {'name':'geo_loc_name', 'id':'geo_loc_name'},
-                    {'name':'run_date', 'id':'run_date'},
-                    {'name':'assembly_length_unambiguous', 'id':'assembly_length_unambiguous'},
-                    {'name':'amplicon_set', 'id':'amplicon_set'},
-                    {'name':'vadr_num_alerts', 'id':'vadr_num_alerts'},
-                    {'name':'nextclade_aa_subs', 'id':'nextclade_aa_subs'},
-                    {'name':'nextclade_aa_dels', 'id':'nextclade_aa_dels'},
-                    {'name':'collected_by', 'id':'collected_by'},
-                    {'name':'purpose_of_sequencing', 'id':'purpose_of_sequencing'},
-                    {'name':'bioproject_accession', 'id':'bioproject_accession'},
-                ],
-                sort_action='native',
-                filter_action='native',
-                page_action='native',
-                page_size=20,
-                export_format='xlsx',
-                export_headers='ids',
-                style_table={'overflowX': 'auto'},
-            ))
-        ])),
+        #dbc.Card(dbc.CardBody([
+        #    html.P(children='Details for each sample.'),
+        #    html.Div([
+        #        dcc.RadioItems(
+        #            id='selector_sample_details',
+        #            options=[
+        #                {'label':'VoCs only', 'value': 'vocs'},
+        #                {'label':'all samples', 'value': 'all'},
+        #            ],
+        #            value='vocs'
+        #        ),
+        #    ]),
+        #    html.Div(children=dash_table.DataTable(
+        #        id='table_vocs_by_sample',
+        #        columns=[
+        #            {'name':'sample', 'id':'sample'},
+        #            {'name':'collaborator_id', 'id':'collaborator_id'},
+        #            {'name':'biosample_accession', 'id':'biosample_accession'},
+        #            {'name':'pango_lineage', 'id':'pango_lineage'},
+        #            {'name':'nextclade_clade', 'id':'nextclade_clade'},
+        #            {'name':'collection_date', 'id':'collection_date'},
+        #            {'name':'geo_loc_name', 'id':'geo_loc_name'},
+        #            {'name':'run_date', 'id':'run_date'},
+        #            {'name':'assembly_length_unambiguous', 'id':'assembly_length_unambiguous'},
+        #            {'name':'amplicon_set', 'id':'amplicon_set'},
+        #            {'name':'vadr_num_alerts', 'id':'vadr_num_alerts'},
+        #            {'name':'nextclade_aa_subs', 'id':'nextclade_aa_subs'},
+        #            {'name':'nextclade_aa_dels', 'id':'nextclade_aa_dels'},
+        #            {'name':'collected_by', 'id':'collected_by'},
+        #            {'name':'purpose_of_sequencing', 'id':'purpose_of_sequencing'},
+        #            {'name':'bioproject_accession', 'id':'bioproject_accession'},
+        #        ],
+        #        sort_action='native',
+        #        filter_action='native',
+        #        page_action='native',
+        #        page_size=20,
+        #        export_format='xlsx',
+        #        export_headers='ids',
+        #        style_table={'overflowX': 'auto'},
+        #    ))
+        #])),
     ]),
 
     html.Br(),
