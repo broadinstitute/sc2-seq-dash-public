@@ -116,16 +116,15 @@ def fig_sample_age(states, collabs, purpose):
     dash.dependencies.Input('state_selector', 'value'),
     dash.dependencies.Input('collab_selector', 'value'),
     dash.dependencies.Input('purpose_selector', 'value'),
-    dash.dependencies.Input('selector_rtt_colorby', 'value'),
     )
-def fig_root_to_tip(states, collabs, purpose, colorby):
+def fig_root_to_tip(states, collabs, purpose):
     ''' Genetic distance as a QC check '''
     df = get_subset(states, collabs, purpose)
     df_good = df.query('genome_status != "failed_sequencing" and genome_status != "failed_NTC"')
-    return px.scatter(df_good[df_good.collection_date.notnull() & df_good.dist_to_ref_snps.notnull()],
+    return px.scatter(df_good[df_good.voc_name.notnull()],
         title='Genetic distance root-to-tip vs sample collection date',
         x='collection_date', y='dist_to_ref_snps',
-        color=colorby, opacity=0.7,
+        color='voc_name', opacity=0.7,
         hover_data=['sample', 'biosample_accession', 'collected_by', 'collection_date', 'run_date', 'sample_age_at_runtime', 'purpose_of_sequencing', 'pango_lineage', 'nextclade_clade', 'geo_loc_name']
         )
 
@@ -363,19 +362,6 @@ app.layout = html.Div(children=[
                         dcc.Graph(id="fig_root_to_tip"),
                     ]),
                 ]),
-                dbc.Col([
-                    dcc.RadioItems(
-                        id='selector_rtt_colorby',
-                        options=[
-                            {'label':'sequencing batch', 'value': 'flowcell_id'},
-                            {'label':'sending lab', 'value': 'collected_by'},
-                            {'label':'state', 'value': 'geo_state'},
-                            {'label':'purpose of sequencing', 'value': 'purpose_of_sequencing'},
-                            {'label':'nextclade clade', 'value': 'nextclade_clade'},
-                        ],
-                        value='nextclade_clade'
-                    ),
-                ], width=3, align="center"),
             ]),
             dbc.Row([
                 dbc.Col([
